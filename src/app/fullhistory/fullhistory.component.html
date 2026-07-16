@@ -1,0 +1,271 @@
+<div class="history-container">
+
+  <!-- Header -->
+  <div class="history-header">
+    <div>
+      <h1>
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        Search History
+      </h1>
+      <p>
+        <i class="fa-solid fa-database"></i>
+        Complete history of all searches performed
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshData()" title="Refresh">
+        <i class="fa-solid fa-rotate"></i>
+        Refresh
+      </button>
+      <button class="export-btn" (click)="exportCSV()">
+        <i class="fa-solid fa-file-csv"></i>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid" *ngIf="stats">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ stats.totalSearches }}</div>
+        <div class="stat-label">Total Searches</div>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">
+        <i class="fa-solid fa-check-circle"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ stats.completedSearches }}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+    <div class="stat-card failed">
+      <div class="stat-icon">
+        <i class="fa-solid fa-times-circle"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ stats.failedSearches }}</div>
+        <div class="stat-label">Failed</div>
+      </div>
+    </div>
+    <div class="stat-card records">
+      <div class="stat-icon">
+        <i class="fa-solid fa-database"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ stats.totalRecords | number }}</div>
+        <div class="stat-label">Total Records</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-panel">
+    <div class="filter-group">
+      <div class="filter-item">
+        <i class="fa-solid fa-search"></i>
+        <input
+          type="text"
+          placeholder="Search by query..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+        >
+      </div>
+
+      <div class="filter-item">
+        <i class="fa-solid fa-filter"></i>
+        <select [(ngModel)]="filterStatus" (change)="applyFilters()">
+          <option value="all">All Status</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <i class="fa-solid fa-calendar"></i>
+        <input
+          type="date"
+          [(ngModel)]="filterDateFrom"
+          (change)="applyFilters()"
+          placeholder="From"
+        >
+      </div>
+
+      <div class="filter-item">
+        <i class="fa-solid fa-calendar"></i>
+        <input
+          type="date"
+          [(ngModel)]="filterDateTo"
+          (change)="applyFilters()"
+          placeholder="To"
+        >
+      </div>
+
+      <button class="clear-btn" (click)="clearFilters()">
+        <i class="fa-solid fa-times"></i>
+        Clear Filters
+      </button>
+    </div>
+
+    <div class="filter-info">
+      <span>
+        <i class="fa-solid fa-list"></i>
+        Showing {{ filteredHistory.length }} of {{ fullHistory.length }} results
+      </span>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-panel" *ngIf="loading">
+    <i class="fa-solid fa-spinner"></i>
+    <div>Loading history...</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-panel" *ngIf="errorMessage">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <div>{{ errorMessage }}</div>
+  </div>
+
+  <!-- History List -->
+  <div class="history-list" *ngIf="!loading && filteredHistory.length > 0">
+    <div *ngFor="let item of getPaginatedData(); trackBy: trackByFn" class="history-item">
+
+      <!-- Header -->
+      <div class="item-header" (click)="toggleExpand(item.id)">
+        <div class="item-left">
+          <div class="item-status">
+            <i class="fa-solid" [ngClass]="getStatusIcon(item.status)"></i>
+          </div>
+          <div class="item-info">
+            <div class="item-query">
+              <i class="fa-solid fa-terminal"></i>
+              {{ item.query }}
+            </div>
+            <div class="item-meta">
+              <span>
+                <i class="fa-regular fa-clock"></i>
+                {{ formatDate(item.createdAt) }}
+              </span>
+              <span>
+                <i class="fa-solid fa-database"></i>
+                {{ item.databaseCount }} databases
+              </span>
+              <span>
+                <i class="fa-solid fa-list"></i>
+                {{ getTotalRecords(item.databases) }} records
+              </span>
+              <span>
+                <i class="fa-solid fa-tag"></i>
+                {{ getQueryTypeLabel(item.queryType) }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="item-right">
+          <span class="status-badge" [ngClass]="getStatusClass(item.status)">
+            {{ item.status }}
+          </span>
+          <i class="fa-solid"
+             [ngClass]="expandedId === item.id ? 'fa-chevron-up' : 'fa-chevron-down'">
+          </i>
+        </div>
+      </div>
+
+      <!-- Expanded Content -->
+      <div class="item-details" *ngIf="expandedId === item.id">
+        <!-- Databases -->
+        <div *ngFor="let db of item.databases" class="database-section">
+          <div class="database-header">
+            <div>
+              <h4>
+                <i class="fa-solid fa-database"></i>
+                {{ db.databaseName }}
+              </h4>
+              <p>{{ db.infoLeak }}</p>
+            </div>
+            <div class="db-stats">
+              <i class="fa-solid fa-list"></i>
+              {{ db.recordCount }} records
+            </div>
+          </div>
+
+          <!-- Records -->
+          <div *ngFor="let record of db.records; let i = index" class="record-card">
+            <div class="record-title">
+              <i class="fa-solid fa-user-secret"></i>
+              Record #{{ i + 1 }}
+            </div>
+
+            <div *ngFor="let field of getRecordEntries(record)" class="field-row">
+              <div class="field-name">
+                <i class="fa-solid" [ngClass]="getFieldIcon(field.key)"></i>
+                {{ field.key }}
+              </div>
+              <div class="field-value">
+                {{ field.value }}
+              </div>
+              <button class="copy-btn" (click)="copyToClipboard(field.value)" title="Copy">
+                <i class="fa-solid fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-panel" *ngIf="!loading && filteredHistory.length === 0">
+    <i class="fa-solid fa-inbox"></i>
+    <h3>No History Found</h3>
+    <p *ngIf="fullHistory.length === 0">
+      No searches have been performed yet.
+    </p>
+    <p *ngIf="fullHistory.length > 0">
+      Try adjusting your filters to find what you're looking for.
+    </p>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="filteredHistory.length > 0">
+    <div class="pagination-info">
+      Showing {{ (currentPage - 1) * pageSize + 1 }} -
+      {{ Math.min(currentPage * pageSize, filteredHistory.length) }}
+      of {{ filteredHistory.length }}
+    </div>
+    <div class="pagination-controls">
+      <button
+        class="page-btn"
+        (click)="changePage(currentPage - 1)"
+        [disabled]="currentPage === 1">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+
+      <button
+        *ngFor="let page of getPageNumbers()"
+        class="page-btn"
+        [class.active]="page === currentPage"
+        [class.ellipsis]="page === -1"
+        (click)="page !== -1 && changePage(page)"
+        [disabled]="page === -1">
+        {{ page === -1 ? '...' : page }}
+      </button>
+
+      <button
+        class="page-btn"
+        (click)="changePage(currentPage + 1)"
+        [disabled]="currentPage === getTotalPages()">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+</div>

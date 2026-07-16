@@ -1,0 +1,158 @@
+<div class="container">
+  <!-- HEADER -->
+  <div class="terminal-header">
+    <div class="terminal-left">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+    </div>
+    <div class="terminal-right">
+      <h1>
+        <i class="fa-solid fa-terminal"></i>
+        DATA-OCCIEN
+      </h1>
+      <p>
+        <i class="fa-solid fa-shield-halved"></i>
+        Investigation Console by SOURAV
+      </p>
+    </div>
+  </div>
+
+  <p class="subtitle">
+    <i class="fa-solid fa-magnifying-glass" style="margin-right: 10px; color: #00ff00;"></i>
+    Enter a Mobile Number (+91), Email Address or Username to begin investigation
+  </p>
+
+  <!-- SEARCH -->
+  <div class="search-panel">
+    <div class="search-input">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input
+        [(ngModel)]="query"
+        type="text"
+        placeholder="Search Mobile / Email / Username..."
+        (keyup.enter)="search()"
+        [disabled]="loading"
+      >
+    </div>
+    <button class="search-btn" (click)="search()" [disabled]="loading">
+      <i class="fa-solid fa-radar"></i>
+      {{ loading ? 'Searching...' : 'Search' }}
+    </button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-panel" *ngIf="errorMessage">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ errorMessage }}
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-panel" *ngIf="loading">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    Searching Multiple Databases...
+  </div>
+
+  <!-- EMPTY -->
+  <div class="empty-panel" *ngIf="!loading && !result && !errorMessage">
+    <i class="fa-solid fa-user-secret"></i>
+    <h2>No Search Performed</h2>
+    <p>
+      Enter a Mobile Number, Email Address or Username to start your investigation.
+    </p>
+  </div>
+
+  <!-- RESULTS -->
+  <div *ngIf="result?.List" class="result-wrapper">
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h2>
+          <i class="fa-solid fa-database"></i>
+          Search Results
+        </h2>
+        <small>
+          {{ getDatabaseCount() }} Database(s) Found |
+          {{ getTotalRecords() }} Record(s) Total
+        </small>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" (click)="exportJSON()">
+          <i class="fa-solid fa-file-code"></i>
+          Export JSON
+        </button>
+        <button class="btn btn-success" (click)="exportCSV()">
+          <i class="fa-solid fa-file-csv"></i>
+          Export CSV
+        </button>
+        <button class="btn btn-danger" (click)="exportPDF()">
+          <i class="fa-solid fa-file-pdf"></i>
+          Export PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- DATABASE -->
+    <div *ngFor="let db of result.List | keyvalue; let dbIndex = index" class="database-card">
+
+      <div class="database-header" (click)="toggleDatabase(dbIndex)">
+        <div class="database-info">
+          <h3>
+            <i class="fa-solid fa-database"></i>
+            {{ db.key }}
+          </h3>
+          <p>{{ getDb(db.value).InfoLeak }}</p>
+        </div>
+        <div class="database-stats">
+          <span class="status breached">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            BREACHED
+          </span>
+          <span class="record-count">
+            <i class="fa-solid fa-list"></i>
+            {{ getDb(db.value).Data?.length || 0 }} Records
+          </span>
+          <i class="fa-solid" [ngClass]="{'fa-chevron-down': !expandedDatabases[dbIndex], 'fa-chevron-up': expandedDatabases[dbIndex]}"></i>
+        </div>
+      </div>
+
+      <!-- RECORDS - Collapsible -->
+      <div class="database-body" *ngIf="expandedDatabases[dbIndex]">
+        <div *ngFor="let row of getDb(db.value).Data; let i = index" class="record-card">
+
+          <div class="record-title" (click)="toggleRecord(dbIndex, i)">
+            <span>
+              <i class="fa-solid fa-user-secret"></i>
+              Record #{{ i + 1 }}
+            </span>
+            <i class="fa-solid" [ngClass]="{'fa-chevron-down': !expandedRecords[dbIndex + '-' + i], 'fa-chevron-up': expandedRecords[dbIndex + '-' + i]}"></i>
+          </div>
+
+          <!-- Record Fields - Collapsible -->
+          <div class="record-body" *ngIf="expandedRecords[dbIndex + '-' + i]">
+            <div *ngFor="let field of getRow(row) | keyvalue" class="field-row">
+
+              <div class="field-name">
+                <i class="fa-solid" [ngClass]="getFieldIcon(field)"></i>
+                {{ formatFieldName(field.key) }}
+              </div>
+
+              <div class="field-value" [title]="getFieldValue(field)">
+                {{ getFieldValue(field) }}
+              </div>
+
+              <button class="copy-btn" (click)="copy(field.value); $event.stopPropagation()" title="Copy">
+                <i class="fa-solid fa-copy"></i>
+              </button>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
