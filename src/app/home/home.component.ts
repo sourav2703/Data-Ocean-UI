@@ -160,91 +160,317 @@ export class HomeComponent {
     window.URL.revokeObjectURL(url);
   }
 
+  // ============================================
+  // PDF EXPORT USING WINDOW.PRINT()
+  // ============================================
   exportPDF(): void {
     if (!this.result) {
       alert('No data to export');
       return;
     }
 
-    // Create a printable version
+    // Show loading state
+    this.loading = true;
+
+    // Create the printable content
     const printContent = this.generatePrintableContent();
+
+    // Open new window with print dialog
     const win = window.open('', '_blank', 'width=1200,height=800');
     if (!win) {
-      alert('Please allow popups to export PDF');
+      this.loading = false;
+      alert('Please allow popups to export PDF. Check your browser settings.');
       return;
     }
 
+    // Write the content to the new window
     win.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Data-Occien - Search Report</title>
+          <meta charset="UTF-8">
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-            .header h1 { color: #00ff00; font-size: 28px; }
-            .header p { color: #666; }
-            .db-card { border: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px; overflow: hidden; }
-            .db-header { background: #f5f5f5; padding: 10px 15px; border-bottom: 1px solid #ddd; }
-            .db-header h3 { margin: 0; color: #333; }
-            .db-header .info { color: #666; font-size: 14px; }
-            .record { border-bottom: 1px solid #eee; padding: 10px 15px; }
-            .record:last-child { border-bottom: none; }
-            .record-title { font-weight: bold; color: #555; margin-bottom: 5px; }
-            .field { display: flex; padding: 3px 0; }
-            .field-name { font-weight: bold; width: 150px; color: #666; }
-            .field-value { flex: 1; color: #333; }
-            .status { color: #ff0000; font-weight: bold; }
-            .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; }
+            /* ============================================
+               PRINT STYLES
+               ============================================ */
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+
+            body {
+              font-family: 'Segoe UI', Arial, sans-serif;
+              padding: 20px;
+              background: white;
+              color: #333;
+            }
+
+            /* Header */
+            .print-header {
+              text-align: center;
+              border-bottom: 3px solid #00ff00;
+              padding-bottom: 15px;
+              margin-bottom: 25px;
+            }
+
+            .print-header h1 {
+              color: #00aa00;
+              font-size: 28px;
+              font-weight: bold;
+              letter-spacing: 2px;
+            }
+
+            .print-header .subtitle {
+              color: #666;
+              font-size: 14px;
+              margin-top: 5px;
+            }
+
+            .print-header .query-info {
+              color: #888;
+              font-size: 13px;
+              margin-top: 8px;
+              background: #f5f5f5;
+              padding: 5px 15px;
+              display: inline-block;
+              border-radius: 4px;
+            }
+
+            /* Database Cards */
+            .db-card {
+              border: 1px solid #e0e0e0;
+              margin-bottom: 20px;
+              border-radius: 6px;
+              overflow: hidden;
+              page-break-inside: avoid;
+            }
+
+            .db-header {
+              background: #f8f8f8;
+              padding: 12px 18px;
+              border-bottom: 1px solid #e0e0e0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+
+            .db-header h3 {
+              margin: 0;
+              color: #333;
+              font-size: 16px;
+            }
+
+            .db-header .db-info {
+              color: #888;
+              font-size: 13px;
+            }
+
+            .db-header .breached-status {
+              color: #ff0000;
+              font-weight: bold;
+              font-size: 12px;
+              background: #ffe0e0;
+              padding: 3px 12px;
+              border-radius: 12px;
+            }
+
+            /* Records */
+            .record {
+              padding: 12px 18px;
+              border-bottom: 1px solid #f0f0f0;
+            }
+
+            .record:last-child {
+              border-bottom: none;
+            }
+
+            .record-title {
+              font-weight: bold;
+              color: #555;
+              font-size: 13px;
+              margin-bottom: 6px;
+              padding-bottom: 4px;
+              border-bottom: 1px dashed #eee;
+            }
+
+            .field {
+              display: flex;
+              padding: 3px 0;
+              font-size: 13px;
+              line-height: 1.5;
+            }
+
+            .field-name {
+              font-weight: bold;
+              min-width: 140px;
+              color: #666;
+            }
+
+            .field-value {
+              flex: 1;
+              color: #333;
+              word-break: break-word;
+            }
+
+            /* Footer */
+            .print-footer {
+              text-align: center;
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 1px solid #e0e0e0;
+              color: #aaa;
+              font-size: 11px;
+            }
+
+            /* Page break handling */
+            .page-break {
+              page-break-before: always;
+            }
+
+            /* Print optimization */
             @media print {
-              .no-print { display: none; }
+              body {
+                padding: 10px;
+              }
+
+              .db-card {
+                break-inside: avoid;
+              }
+
+              .record {
+                break-inside: avoid;
+              }
+
+              .no-print {
+                display: none !important;
+              }
+            }
+
+            /* Screen only (visible in preview) */
+            @media screen {
+              .print-tip {
+                background: #fff3cd;
+                border: 1px solid #ffc107;
+                color: #856404;
+                padding: 10px 15px;
+                border-radius: 4px;
+                margin-bottom: 20px;
+                font-size: 14px;
+              }
+
+              .print-tip strong {
+                color: #333;
+              }
+            }
+
+            /* Empty state */
+            .no-data {
+              text-align: center;
+              padding: 40px;
+              color: #999;
             }
           </style>
         </head>
         <body>
+          <!-- Print Tip (only visible on screen) -->
+          <div class="print-tip no-print">
+            <strong>📄 Print to PDF:</strong>
+            When the print dialog appears, select <strong>"Save as PDF"</strong> as the destination.
+            <br>
+            <small>Click <strong>Cancel</strong> to close without printing.</small>
+          </div>
+
           ${printContent}
+
+          <div class="print-footer">
+            <p>Data-Occien - Secure Investigation Platform</p>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+          </div>
+
           <script>
+            // Auto-trigger print when window loads
             window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 1000);
-            }
+              // Small delay to ensure content is rendered
+              setTimeout(function() {
+                window.print();
+
+                // Optional: Close window after printing
+                window.onafterprint = function() {
+                  // Comment this out if you want to keep the window open
+                  // setTimeout(function() { window.close(); }, 2000);
+                };
+              }, 500);
+            };
           <\/script>
         </body>
       </html>
     `);
+
     win.document.close();
+
+    // Reset loading state (will be reset when window closes)
+    setTimeout(() => {
+      this.loading = false;
+    }, 3000);
   }
 
+  // ============================================
+  // GENERATE PRINTABLE CONTENT
+  // ============================================
   private generatePrintableContent(): string {
     let html = `
-      <div class="header">
+      <div class="print-header">
         <h1>🔍 DATA-OCCIEN - Investigation Report</h1>
-        <p>Query: ${this.query} | Generated: ${new Date().toLocaleString()}</p>
+        <div class="subtitle">Secure Investigation Console</div>
+        <div class="query-info">
+          <strong>Query:</strong> ${this.escapeHtml(this.query)} &nbsp;|&nbsp;
+          <strong>Generated:</strong> ${new Date().toLocaleString()}
+        </div>
       </div>
     `;
 
-    for (const dbKey in this.result.List) {
+    // Check if there are results
+    const dbKeys = Object.keys(this.result.List);
+    if (dbKeys.length === 0) {
+      html += `
+        <div class="no-data">
+          <p>No databases found for this query.</p>
+        </div>
+      `;
+      return html;
+    }
+
+    // Generate content for each database
+    for (const dbKey of dbKeys) {
       const db = this.result.List[dbKey];
+
       html += `
         <div class="db-card">
           <div class="db-header">
-            <h3>📊 ${dbKey}</h3>
-            <div class="info">${db.InfoLeak || 'No description'}</div>
-            <div class="status">⚠️ BREACHED</div>
+            <div>
+              <h3>📊 ${this.escapeHtml(dbKey)}</h3>
+              <div class="db-info">${this.escapeHtml(db.InfoLeak || 'No description available')}</div>
+            </div>
+            <div class="breached-status">⚠️ BREACHED</div>
           </div>
       `;
 
-      if (db.Data) {
+      // Records
+      if (db.Data && db.Data.length > 0) {
         db.Data.forEach((record: any, index: number) => {
           html += `<div class="record">
             <div class="record-title">Record #${index + 1}</div>`;
 
+          // Fields
           for (const key in record) {
             const value = record[key];
-            if (value !== null && value !== undefined) {
+            if (value !== null && value !== undefined && value !== '') {
               html += `
                 <div class="field">
                   <div class="field-name">${this.formatFieldName(key)}:</div>
-                  <div class="field-value">${value}</div>
+                  <div class="field-value">${this.escapeHtml(String(value))}</div>
                 </div>
               `;
             }
@@ -252,21 +478,32 @@ export class HomeComponent {
 
           html += `</div>`;
         });
+      } else {
+        html += `
+          <div class="record">
+            <div style="color: #999; padding: 10px 0;">No records found in this database.</div>
+          </div>
+        `;
       }
 
       html += `</div>`;
     }
 
-    html += `
-      <div class="footer">
-        <p>Data-Occien - Secure Investigation Platform | Generated on ${new Date().toLocaleString()}</p>
-      </div>
-    `;
-
     return html;
   }
 
-  // Helper functions
+  // ============================================
+  // HELPER METHODS
+  // ============================================
+
+  // Escape HTML to prevent XSS
+  private escapeHtml(text: string): string {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   getDb(value: any): any {
     return value;
   }
@@ -360,7 +597,6 @@ export class HomeComponent {
   copy(value: any): void {
     const text = String(value);
     navigator.clipboard.writeText(text).then(() => {
-      // Could show a toast notification here
       console.log('Copied:', text);
     }).catch(err => {
       console.error('Copy failed:', err);
